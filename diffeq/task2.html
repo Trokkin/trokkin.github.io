@@ -6,23 +6,29 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jcanvas/21.0.1/min/jcanvas.min.js"></script>
-	<title>D.E.V.#1</title>
+	<title>D.E.V.#2</title>
 </head>
 
 <body>
 	<div id="container">
-		- Drag with mouse/touchscreen to navigate plot space<br>
-		- Drag the object to change it's placement<br>
-		- Move slider to change the 'gravity' constant<br>
+		- Mouse/touchscreen to navigate plot space<br>
+		- Drag any object to change it's placement<br>
+		- Move slider at the top to change spring pull/push constant<br>
+		- Sliders at the bottom determine resting points for the system<br>
+		(both boxes have to be at their corresponding points and 0 velocity to be immobile)<br>
 		- Click pause to pause and properly set up everything<br>
 		- Clicks anywhere during pause to set new velocity vector<br>
 		<canvas width="700" height="700" id="canvas1"></canvas>
 		<script>
 			$(document).ready(function () {
-				let bg = null, arrow = null, head = null;
-				let dt = 1 / 32, pause = false, asq = 1;
-				let x = 300, y = 100,
-					vx = 0, vy = -100;
+				bg = null;
+				dt = 1 / 32, pause = false, asq = 1;
+				b = [
+					{ dv: 0, v: 0, baseptr: null, body: null, arrow: null },
+					{ dv: 0, v: 0, baseptr: null, body: null, arrow: null }
+				], selected = b[0];
+				const C_H = 50;
+
 				$('#canvas1').drawRect({
 					x: 0, y: 0,
 					width: 10000, height: 10000,
@@ -33,9 +39,9 @@
 					draggable: true,
 					dragGroups: ['chart'],
 					mousedown: function (layer) {
-						if (pause) {
-							vx = layer.eventX - x - bg.x, vy = layer.eventY - y - bg.y;
-							arrow.x2 = vx, arrow.y2 = vy;
+						if (pause && selected) {
+							selected.v = layer.eventX - selected.body.x;
+							selected.arrow.x2 = selected.v;
 						}
 					}
 				}).drawLine({
@@ -50,47 +56,67 @@
 					intangible: true,
 					groups: ['chart'],
 				});
-				tail = Array(64)
-				tailHead = 0
-				for (var i = 1; i <= 64; i++) {
-					$('#canvas1').drawArc({
+
+				for (let box of b) {
+					box.body = $('#canvas1').drawRect({
 						fillStyle: 'green',
-						x: x, y: y,
-						radius: 10,
-						opacity: 0,
+						x: 300, y: C_H * -0.5,
+						width: C_H, height: C_H,
+						layer: true,
+						draggable: true,
+						groups: ['chart'],
+						mousedown: (layer) => {
+							for (let t of b) {
+								if (layer === t.body) {
+									selected = t;
+									t.body.fillStyle = 'purple';
+									t.baseptr.fillStyle = 'pink';
+								} else {
+									t.body.fillStyle = 'green';
+									t.baseptr.fillStyle = '#9cf';
+								}
+							}
+						},
+						drag: (layer) => {
+							layer.y = C_H * -0.5 + bg.y;
+							box.arrow.x = layer.x;
+							box.arrow.x2 = box.v;
+						}
+					}).getLayer(-1);
+				}
+				for (let box of b) {
+					box.arrow = $('#canvas1').drawLine({
+						strokeStyle: 'red',
+						strokeWidth: 1,
+						rounded: true,
+						endArrow: true,
+						arrowRadius: 5,
+						arrowAngle: 45,
+						x: 300, y: C_H * -0.5,
+						x1: 0, y1: 0,
+						x2: 0, y2: 0,
 						layer: true,
 						intangible: true,
 						groups: ['chart'],
-					})
-					tail[i - 1] = $('#canvas1').getLayer(-1);
+					}).getLayer(-1);
 				}
-				$('#canvas1').drawArc({
-					fillStyle: 'green',
-					x: x, y: y,
-					radius: 12,
-					name: 'head',
-					layer: true,
-					draggable: true,
-					groups: ['chart'],
-					drag: function (layer) {
-						arrow.x = layer.x, arrow.y = layer.y;
-						x = layer.x - bg.x, y = layer.y - bg.y;
-					}
-				}).drawLine({
-					strokeStyle: 'red',
-					strokeWidth: 1,
-					rounded: true,
-					endArrow: true,
-					arrowRadius: 5,
-					arrowAngle: 45,
-					x: 0, y: 0,
-					x1: 0, y1: 0,
-					x2: 0, y2: 0,
-					name: 'arrow',
-					layer: true,
-					intangible: true,
-					groups: ['chart'],
-				}).drawText({
+				for (let box of b) {
+					box.baseptr = $('#canvas1').drawArc({
+						fillStyle: '#9cf',
+						strokeStyle: '#25a',
+						x: 300, y: C_H * 0.5,
+						radius: 8,
+						layer: true,
+						draggable: true,
+						groups: ['chart'],
+						drag: (layer) => {
+							layer.y = C_H * 0.5 + bg.y;
+						}
+					}).getLayer(-1);
+				}
+				b[1].body.x = b[1].baseptr.x = 600
+
+				$('#canvas1').drawText({
 					fillStyle: '#9cf',
 					strokeStyle: '#25a',
 					strokeWidth: 2,
@@ -110,8 +136,8 @@
 					text: 'Reset',
 					layer: true,
 					mousedown: function () {
-						x = 300, y = 100,
-							vx = 0, vy = -100;
+						b[0].body.x = 300 + bg.x, b[0].v = 0, b[0].baseptr.x = 300 + bg.x;
+						b[1].body.x = 600 + bg.x, b[1].v = 0, b[1].baseptr.x = 600 + bg.x;
 					}
 				}).drawText({
 					fillStyle: '#9cf',
@@ -151,28 +177,21 @@
 						asq = Math.exp((layer.x - 500) / 100);
 						$('#canvas1').getLayer('aeq').text = ('A^2 = ' + asq).substr(0, 10);
 					}
-				}).setLayerGroup('chart', { x: '+=350', y: '+=350' });
+				}).setLayerGroup('chart', { x: '+=35', y: '+=350' });
 
 				bg = $('#canvas1').getLayer('bg');
 				head = $('#canvas1').getLayer('head');
 				arrow = $('#canvas1').getLayer('arrow');
 				window.setInterval(function () {
 					if (!pause) {
-						var t;
-						tailHead = (tailHead + 1) % 64;
-						tail[tailHead].x = x + bg.x;
-						tail[tailHead].y = y + bg.y;
-						for (var i = 1; i <= 64; i++) {
-							var j = (i + 62 - tailHead) % 64;
-							tail[i - 1].radius = 5 + 5 * j / 64.0;
-							tail[i - 1].opacity = 0.5 * j / 64.0;
+						b[0].dv = asq * dt * (b[0].body.x - b[0].baseptr.x);
+						b[1].dv = asq * dt * (b[1].body.x - b[0].body.x - (b[1].baseptr.x - b[0].baseptr.x)) - b[0].dv;
+						b[0].v -= b[0].dv - b[1].dv; b[1].v -= b[1].dv;
+						for (let box of b) {
+							box.body.x += box.v * dt - box.dv * 0.5 * dt;
+							box.arrow.x = box.body.x;
+							box.arrow.x2 = box.v;
 						}
-
-						x += vx * dt; y += vy * dt;
-						vx -= asq * x * dt; vy -= asq * y * dt;
-						head.x = x + bg.x, head.y = y + bg.y;
-						arrow.x = x + bg.x, arrow.y = y + bg.y;
-						arrow.x2 = vx, arrow.y2 = vy;
 						$('#canvas1').drawLayers();
 					}
 				}, 1000 * dt);
