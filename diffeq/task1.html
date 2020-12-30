@@ -11,6 +11,12 @@
 
 <body>
 	<div id="container">
+		- Mouse/touchscreen to navigate plot space<br>
+		- Drag the object to change it's placement<br>
+		- Clicks anywhere to set new velocity vector<br>
+		- Move slider to change the constant<br>
+		- Pause to properly set up everything<br>
+		<canvas width="700" height="700" id="canvas1"></canvas>
 		<script>
 			$(document).ready(function () {
 				let bg = null, arrow = null, head = null;
@@ -105,7 +111,7 @@
 					fillStyle: '#9cf',
 					strokeStyle: '#25a',
 					strokeWidth: 2,
-					fontSize: 24,
+					fontSize: 20,
 					fontFamily: 'Verdana, sans-serif',
 					text: 'A^2 = 1',
 					x: 180, y: 20,
@@ -143,6 +149,7 @@
 				bg = $('#canvas1').getLayer('bg');
 				head = $('#canvas1').getLayer('head');
 				arrow = $('#canvas1').getLayer('arrow');
+				$('#canvas1').setLayerGroup('chart', { x: '+=350', y: '+=350' });
 
 				tail = Array(64)
 				tailHead = 0
@@ -184,7 +191,6 @@
 				}, false);
 			});
 		</script>
-		<canvas width="720" height="1024" id="canvas1">
 	</div>
 </body>
 
