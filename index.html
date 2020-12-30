@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jcanvas/21.0.1/min/jcanvas.min.js"></script>
+	<title>Diff.Eq. Visualization</title>
+</head>
+
+<body>
+	<div id="container">
+		<script>
+			$(document).ready(function () {
+				let bg = null, arrow = null, head = null;
+				let dt = 1 / 24, asq = 1;
+				let x = 300, y = 100,
+					vx = 0, vy = -100, launch = false;
+				function interpolateColor(color1, color2, factor) {
+					var result = color1.slice();
+					for (let i in result)
+						result[i] = Math.round(result[i] + factor * (color2[i] - color1[i]));
+					return result;
+				};
+
+				$('#canvas1').drawRect({
+					x: 0, y: 0,
+					width: 10000, height: 10000,
+					fillStyle: 'black',
+					layer: true,
+					name: 'bg',
+					groups: ['chart'],
+					draggable: true,
+					dragGroups: ['chart'],
+					mousedown: function (layer) {
+						if (launch) {
+							vx = layer.eventX - x - bg.x, vy = layer.eventY - y - bg.y;
+							arrow.x2 = vx, arrow.y2 = vy;
+						}
+					}
+				}).drawLine({
+					x1: -5000, y1: 0,
+					x2: 5000, y2: 0,
+					x3: 5000, y3: 5000,
+					x4: 0, y4: 5000,
+					x5: 0, y5: -5000,
+					strokeStyle: 'red',
+					strokeWidth: 1,
+					layer: true,
+					intangible: true,
+					groups: ['chart'],
+				});
+
+				$('#canvas1').drawArc({
+					fillStyle: 'green',
+					x: 0, y: 0,
+					radius: 10,
+					name: 'head',
+					layer: true,
+					draggable: true,
+					groups: ['chart'],
+					drag: function (layer) {
+						arrow.x = layer.x, arrow.y = layer.y;
+						x = layer.x - bg.x, y = layer.y - bg.y;
+					}
+				}).drawLine({
+					strokeStyle: 'red',
+					strokeWidth: 1,
+					rounded: true,
+					endArrow: true,
+					arrowRadius: 5,
+					arrowAngle: 45,
+					x: 0, y: 0,
+					x1: 0, y1: 0,
+					x2: 0, y2: 0,
+					name: 'arrow',
+					layer: true,
+					intangible: true,
+					groups: ['chart'],
+				}).drawText({
+					fillStyle: '#9cf',
+					strokeStyle: '#25a',
+					strokeWidth: 2,
+					x: 40, y: 20,
+					fontSize: 24,
+					fontFamily: 'Verdana, sans-serif',
+					text: 'Pause',
+					layer: true,
+					mousedown: function () { launch = !launch; }
+				}).drawText({
+					fillStyle: '#9cf',
+					strokeStyle: '#25a',
+					strokeWidth: 2,
+					x: 120, y: 20,
+					fontSize: 24,
+					fontFamily: 'Verdana, sans-serif',
+					text: 'Reset',
+					layer: true,
+					mousedown: function () {
+						x = 300, y = 100,
+							vx = 0, vy = -100;
+					}
+				}).drawText({
+					fillStyle: '#9cf',
+					strokeStyle: '#25a',
+					strokeWidth: 2,
+					fontSize: 24,
+					fontFamily: 'Verdana, sans-serif',
+					text: 'A^2 = 1',
+					x: 180, y: 20,
+					align: 'left',
+					respectAlign: true,
+					name: 'aeq',
+					groups: ['ais'],
+					dragGroups: ['ais'],
+					layer: true,
+				}).drawLine({
+					strokeStyle: '#25a',
+					strokeWidth: 2,
+					x: 300, y: 20,
+					x1: 0, y1: 0,
+					x2: 400, y2: 0,
+					layer: true,
+					groups: ['ais'],
+				}).drawArc({
+					fillStyle: '#9cf',
+					strokeStyle: '#25a',
+					x: 500, y: 20,
+					radius: 5,
+					layer: true,
+					draggable: true,
+
+					restrictDragToAxis: 'x',
+					groups: ['ais'],
+					drag: function (layer) {
+						if (layer.x < 300) layer.x = 300;
+						if (layer.x > 700) layer.x = 700;
+						asq = Math.exp((layer.x - 500) / 100);
+						$('#canvas1').getLayer('aeq').text = ('A^2 = ' + asq).substr(0, 10);
+					}
+				});
+				bg = $('#canvas1').getLayer('bg');
+				head = $('#canvas1').getLayer('head');
+				arrow = $('#canvas1').getLayer('arrow');
+
+				tail = Array(64)
+				tailHead = 0
+				for (var i = 1; i <= 64; i++) {
+					$('#canvas1').drawArc({
+						fillStyle: 'green',
+						x: x + bg.x, y: y + bg.y,
+						radius: 5 + 5 * i / 64.0,
+						opacity: i / 64.0,
+						layer: true,
+						intangible: true,
+						groups: ['chart'],
+					})
+					tail[i - 1] = $('#canvas1').getLayer(-1);
+				}
+				window.setInterval(function () {
+					if (!launch) {
+						var t;
+						tailHead = (tailHead + 1) % 64;
+						tail[tailHead].x = x + bg.x;
+						tail[tailHead].y = y + bg.y;
+						for (var i = 1; i <= 64; i++) {
+							var j = (i + 64 - tailHead) % 64;
+							tail[i - 1].radius = 5 + 5 * j / 64.0;
+							tail[i - 1].opacity = j / 64.0;
+						}
+
+						x += vx * dt; y += vy * dt;
+						vx -= asq * x * dt; vy -= asq * y * dt;
+						head.x = x + bg.x, head.y = y + bg.y;
+						arrow.x = x + bg.x, arrow.y = y + bg.y;
+						arrow.x2 = vx, arrow.y2 = vy;
+						$('#canvas1').drawLayers();
+					}
+				}, 1000 * dt);
+				$('#canvas1').on('contextmenu', function (e) {
+					e.preventDefault();
+					return false;
+				}, false);
+			});
+		</script>
+		<canvas width="720" height="1024" id="canvas1">
+	</div>
+</body>
+
+</html>
